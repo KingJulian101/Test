@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Performance Ledger — ISA Holdings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#131210; --panel:#181713; --panel2:#1c1b16;
+    --ink:#eae5d9; --dim:#948d80; --faint:#6b6558;
+    --hair:#2a2823; --hair2:#38352e;
+    --gold:#c9a961; --pos:#8fac81; --neg:#bf6a5b;
+    --serif:'Fraunces', Georgia, 'Times New Roman', serif;
+    --mono:'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto} *{transition:none!important;animation:none!important}}
+  body{background:var(--bg);color:var(--ink);font-family:var(--serif);font-weight:300;
+       font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 96px}
+  a{color:var(--gold)}
+
+  /* ---------- microtype ---------- */
+  .micro{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .micro b{color:var(--ink);font-weight:500}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  /* ---------- masthead ---------- */
+  header{padding:44px 0 26px;border-bottom:1px solid var(--hair2)}
+  .kicker{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:18px}
+  h1{font-size:clamp(38px,7vw,64px);font-weight:300;letter-spacing:-.015em;line-height:1.02}
+  h1 em{font-style:italic;font-weight:300;color:var(--gold)}
+  .deck{margin-top:14px;max-width:620px;font-size:17px;font-style:italic;color:var(--dim);line-height:1.5}
+
+  /* ---------- portfolio band ---------- */
+  .band{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--hair2)}
+  .band .cell{padding:22px 18px 20px;border-left:1px solid var(--hair)}
+  .band .cell:first-child{border-left:none;padding-left:0}
+  .band .lab{margin-bottom:8px}
+  .band .big{font-family:var(--mono);font-size:clamp(22px,3.4vw,30px);font-weight:400;letter-spacing:-.01em}
+  .band .vs{margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .band .vs b{color:var(--gold);font-weight:500}
+  .bandfoot{padding:12px 0 0;color:var(--faint)}
+  @media(max-width:640px){
+    .band{grid-template-columns:1fr 1fr}
+    .band .cell{padding:16px 14px 14px}
+    .band .cell:nth-child(3){border-left:none;padding-left:0}
+    .band .cell:nth-child(1),.band .cell:nth-child(2){border-bottom:1px solid var(--hair)}
+  }
+
+  /* ---------- section headers ---------- */
+  .sec{margin-top:64px}
+  .sechead{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+           border-bottom:1px solid var(--hair2);padding-bottom:10px;margin-bottom:6px}
+  .sechead h2{font-size:clamp(22px,3.4vw,30px);font-weight:300;letter-spacing:-.01em}
+  .sechead .micro{text-align:right}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:16px 0 4px}
+  .seg{display:inline-flex;border:1px solid var(--hair2);border-radius:2px;overflow:hidden}
+  .seg button{appearance:none;background:transparent;border:none;color:var(--dim);cursor:pointer;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    padding:8px 13px;border-left:1px solid var(--hair2);transition:color .15s,background .15s}
+  .seg button:first-child{border-left:none}
+  .seg button[aria-pressed="true"]{color:var(--bg);background:var(--gold)}
+  .seg button:not([aria-pressed="true"]):hover{color:var(--ink)}
+  .seg button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+  .seg.isoff{opacity:.35;pointer-events:none}
+  .ctl-lab{margin-right:-12px}
+
+  /* ---------- ledger ---------- */
+  .sleeve{margin-top:30px}
+  .sleeve-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+    padding:8px 0;border-bottom:1px solid var(--hair2)}
+  .sleeve-head .name{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:500}
+  .row{padding:14px 0 12px;border-bottom:1px solid var(--hair)}
+  .row-top{display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+  .h-name{font-size:17px;font-weight:400;letter-spacing:.002em}
+  .sus{font-style:italic;color:var(--faint);font-size:14px}
+  .band.p3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:640px){
+    .band.p3{grid-template-columns:repeat(3,1fr)}
+    .band.p3 .cell{border-bottom:none;padding:14px 10px 12px}
+    .band.p3 .cell:nth-child(3){border-left:1px solid var(--hair);padding-left:10px}
+  }
+  .h-meta{margin-top:3px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+  .h-meta .stars{color:var(--gold);letter-spacing:.02em}
+  .h-val{text-align:right;flex-shrink:0}
+  .h-ret{font-family:var(--mono);font-size:19px;font-weight:500;letter-spacing:-.01em}
+  .h-ret.pos{color:var(--pos)} .h-ret.neg{color:var(--neg)} .h-ret.na{color:var(--faint);font-weight:400}
+  .h-wt{margin-top:2px;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.08em}
+  .h-micro{margin-top:8px;font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.03em}
+  .h-micro span.p{color:var(--pos)} .h-micro span.n{color:var(--neg)}
+  /* diverging bar */
+  .barwrap{position:relative;height:3px;margin-top:9px;background:var(--hair)}
+  .barwrap::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--hair2)}
+  .bar{position:absolute;top:0;bottom:0;transition:width .35s ease, left .35s ease}
+  .bar.pos{left:50%;background:var(--pos)} .bar.neg{right:50%;background:var(--neg)}
+  .bar.clip{background-image:repeating-linear-gradient(90deg,transparent 0 3px,var(--bg) 3px 5px)}
+  .clipmark{position:absolute;top:-4px;font-family:var(--mono);font-size:9px;color:var(--dim)}
+
+  /* ---------- scatter ---------- */
+  .scatter-note{padding:10px 0 4px;color:var(--faint)}
+  svg text{font-family:var(--mono)}
+  .axis-lab{fill:var(--faint);font-size:10px;letter-spacing:.08em}
+  .grid{stroke:var(--hair);stroke-width:1}
+  .pt{fill:var(--ink)} .pt-lab{fill:var(--dim);font-size:10px;letter-spacing:.04em}
+  .port{fill:var(--gold)}
+
+  /* ---------- £1000 strip ---------- */
+  .grand{margin-top:8px}
+  .g-row{display:grid;grid-template-columns:minmax(120px,200px) 1fr auto;gap:14px;align-items:center;
+         padding:9px 0;border-bottom:1px solid var(--hair)}
+  .g-name{font-size:15px;font-weight:400}
+  .g-name.ref{font-style:italic;color:var(--gold)}
+  .g-track{position:relative;height:2px;background:var(--hair)}
+  .g-bar{position:absolute;left:0;top:0;bottom:0;background:var(--dim)}
+  .g-bar.ref{background:var(--gold)} .g-bar.up{background:var(--pos)} .g-bar.dn{background:var(--neg)}
+  .g-val{font-family:var(--mono);font-size:13px;font-weight:500;text-align:right;min-width:72px}
+  @media(max-width:560px){.g-row{grid-template-columns:minmax(100px,1fr) auto;}.g-track{display:none}}
+
+  /* ---------- notes ---------- */
+  .notes{margin-top:14px;border-top:1px solid var(--hair2)}
+  .note{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:16px 0;border-bottom:1px solid var(--hair)}
+  .note .no{font-family:var(--mono);font-size:11px;color:var(--gold);padding-top:4px}
+  .note p{font-size:15px;color:var(--dim);max-width:70ch}
+  .note p b{color:var(--ink);font-weight:500}
+
+  /* ---------- screen nav ---------- */
+  .nav{display:flex;border-bottom:1px solid var(--hair2)}
+  .nav button{appearance:none;background:none;border:none;cursor:pointer;font-family:var(--mono);
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+    padding:15px 22px 13px;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+  .nav button[aria-pressed="true"]{color:var(--gold);border-bottom-color:var(--gold)}
+  .nav button:not([aria-pressed="true"]):hover{color:var(--ink)}
+  .nav button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+  .screen{display:none}.screen.on{display:block}
+
+  /* ---------- daily pulse ---------- */
+  .ghost{appearance:none;background:transparent;border:1px solid var(--hair2);border-radius:2px;
+    color:var(--gold);cursor:pointer;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.12em;text-transform:uppercase;padding:8px 14px;transition:border-color .15s}
+  .ghost:hover{border-color:var(--gold)} .ghost:disabled{opacity:.4;cursor:default}
+  .ghost:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .phead{display:grid;grid-template-columns:minmax(0,1fr) 76px 58px 58px 58px;gap:10px;
+    padding:14px 0 7px;border-bottom:1px solid var(--hair2)}
+  .phead span{text-align:right}.phead span:first-child{text-align:left}
+  .p-row{display:grid;grid-template-columns:minmax(0,1fr) 76px 58px 58px 58px;gap:10px;
+    align-items:center;padding:10px 0;border-bottom:1px solid var(--hair)}
+  .p-name{font-size:15px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .p-sub{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+  .p-v{font-family:var(--mono);font-size:12.5px;font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+  .p-v.pos{color:var(--pos)} .p-v.neg{color:var(--neg)} .p-v.na{color:var(--faint);font-weight:400}
+  .spark{display:block;width:76px;height:22px;justify-self:end}
+  @media(max-width:520px){
+    .phead,.p-row{grid-template-columns:minmax(0,1fr) 54px 47px 47px 47px;gap:6px}
+    .spark{width:54px}.p-name{font-size:14px}.p-v{font-size:11.5px}
+  }
+
+  footer{margin-top:70px;padding-top:16px;border-top:1px solid var(--hair2);
+         display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">
+      <span class="micro"><b>ISA</b> · AJ Bell</span>
+      <span class="micro">Morningstar X-Ray · report 12 Jun 2026</span>
+      <span class="micro">Returns to <b>31 May 2026</b></span>
+    </div>
+    <h1>Performance <em>Ledger</em></h1>
+    <p class="deck">Every position on the book, measured over one, three and five years — annualised
+    or compounded — against the Global Large-Cap Blend benchmark.</p>
+  </header>
+
+  <nav class="nav" id="nav" aria-label="Screens">
+    <button data-s="ledger" aria-pressed="true">The Ledger</button>
+    <button data-s="pulse" aria-pressed="false">Daily Pulse</button>
+  </nav>
+
+  <div class="screen on" id="scr-ledger">
+
+  <div class="band" id="band"></div>
+  <p class="bandfoot micro" id="bandfoot"></p>
+
+  <!-- ═══════════ LEDGER ═══════════ -->
+  <section class="sec">
+    <div class="sechead">
+      <h2>The holdings, on record</h2>
+      <span class="micro">27 lines · 100.0% of assets</span>
+    </div>
+    <div class="controls">
+      <span class="micro ctl-lab">Window</span>
+      <div class="seg" id="segWin" role="group" aria-label="Return window">
+        <button data-w="r1" aria-pressed="false">1 yr</button>
+        <button data-w="r3" aria-pressed="true">3 yr</button>
+        <button data-w="r5" aria-pressed="false">5 yr</button>
+      </div>
+      <span class="micro ctl-lab">Basis</span>
+      <div class="seg" id="segUnit" role="group" aria-label="Return basis">
+        <button data-u="ann" aria-pressed="true">Annualised</button>
+        <button data-u="cum" aria-pressed="false">Compounded</button>
+      </div>
+      <span class="micro ctl-lab">Order</span>
+      <div class="seg" id="segOrder" role="group" aria-label="Ordering">
+        <button data-o="sleeve" aria-pressed="true">Sleeves</button>
+        <button data-o="rank" aria-pressed="false">Ranked</button>
+      </div>
+    </div>
+    <div id="ledger"></div>
+  </section>
+
+  <!-- ═══════════ SCATTER ═══════════ -->
+  <section class="sec">
+    <div class="sechead">
+      <h2>Risk against return</h2>
+      <span class="micro">Top ten · 3-yr mean vs σ</span>
+    </div>
+    <p class="scatter-note micro">From the X-Ray return analysis. Gold diamond marks the whole portfolio
+    — mean +19.9 on a standard deviation of 10.9.</p>
+    <div id="scatter"></div>
+  </section>
+
+  <!-- ═══════════ £1,000 ═══════════ -->
+  <section class="sec">
+    <div class="sechead">
+      <h2>£1,000, five years on</h2>
+      <span class="micro">5-yr annualised, compounded · log scale</span>
+    </div>
+    <div class="grand" id="grand"></div>
+  </section>
+
+  <!-- ═══════════ NOTES ═══════════ -->
+  <section class="sec">
+    <div class="sechead">
+      <h2>What this can and can't say</h2>
+      <span class="micro">Provenance</span>
+    </div>
+    <div class="notes" id="notes"></div>
+  </section>
+
+  </div><!-- /scr-ledger -->
+
+  <!-- ═══════════ DAILY PULSE ═══════════ -->
+  <div class="screen" id="scr-pulse">
+
+    <div class="band p3" id="pband"></div>
+    <p class="bandfoot micro" id="pfoot">Live figures — press refresh to fetch the latest closes.</p>
+
+    <section class="sec">
+      <div class="sechead">
+        <h2>Yesterday, last week, last month</h2>
+        <span class="micro">Yahoo daily closes · listing currency</span>
+      </div>
+      <div class="controls">
+        <span class="micro ctl-lab">Order</span>
+        <div class="seg" id="segPOrder" role="group" aria-label="Pulse ordering">
+          <button data-o="sleeve" aria-pressed="true">Sleeves</button>
+          <button data-o="d" aria-pressed="false">1 d</button>
+          <button data-o="w" aria-pressed="false">1 w</button>
+          <button data-o="m" aria-pressed="false">1 m</button>
+        </div>
+        <button class="ghost" id="pRefresh">Refresh</button>
+        <span class="micro" id="pStamp"></span>
+      </div>
+      <div class="phead micro">
+        <span>Holding</span><span>1 m chart</span><span>1 d</span><span>1 w</span><span>1 m</span>
+      </div>
+      <div id="pulse"></div>
+    </section>
+
+    <section class="sec">
+      <div class="sechead">
+        <h2>How the pulse is taken</h2>
+        <span class="micro">Provenance</span>
+      </div>
+      <div class="notes" id="pnotes"></div>
+    </section>
+
+  </div><!-- /scr-pulse -->
+
+  <footer>
+    <span class="micro">Source · Morningstar Portfolio X-Ray via AJ Bell</span>
+    <span class="micro">Benchmark · Global Large-Cap Blend Equity</span>
+    <span class="micro">Part of the research toolkit</span>
+  </footer>
+
+</div>
+
+<script>
+/* ════════════════════════ DATA — transcribed from the X-Ray, report 12 Jun 2026 ════════════════════════
+   r1 / r3 / r5 : 1-yr, 3-yr annualised, 5-yr annualised total returns (%) to 31 May 2026
+   w  : % of assets  ·  ocf : ongoing cost %  ·  stars : Morningstar rating
+   m3 / sd3 : 3-yr arithmetic mean / standard deviation (top-ten only, from Return Analysis)
+   sleeve : core | single | real | sat | tail   — edit here to retag a line                        */
+const HOLDINGS = [
+ {n:"HSBC FTSE All-World Index",   sh:"AWD",  t:"Fund",  sleeve:"core",   w:22.12, r1:30.48,  r3:18.77,  r5:12.83,  ocf:0.13, stars:4, m3:17.98, sd3:11.64, sym:"0P00013P6I.L"},
+ {n:"Vanguard UK Govt Bond Index", sh:"GILT", t:"Fund",  sleeve:"core",   w:13.02, r1:3.30,   r3:2.27,   r5:-5.31,  ocf:0.12, stars:2, m3:2.48,  sd3:7.06,  sym:"0P0000KM26.L"},
+ {n:"Cash GBP",                    sh:"CASH", t:"Cash",  sleeve:"core",   w:12.28, r1:null,   r3:null,   r5:null,   sym:null},
+ {n:"HSBC MSCI World ETF",         sh:"WRLD", t:"ETF",   sleeve:"core",   w:8.39,  r1:28.02,  r3:18.77,  r5:13.18,  ocf:0.15, stars:5, m3:18.00, sd3:11.81, sym:"HMWO.L"},
+ {n:"HSBC MSCI China ETF",         sh:"CHN",  t:"ETF",   sleeve:"core",   w:3.70,  r1:7.24,   r3:9.24,   r5:-4.18,  ocf:0.28, stars:3, m3:10.81, sd3:20.39, sym:"HMCH.L"},
+
+ {n:"Rolls-Royce Holdings",        sh:"RR",   t:"Stock", sleeve:"single", w:5.49,  r1:55.71,  r3:111.73, r5:66.27,  m3:81.94, sd3:31.54, sym:"RR.L"},
+ {n:"AJ Bell",                     sh:"AJB",  t:"Stock", sleeve:"single", w:4.86,  r1:27.08,  r3:27.95,  r5:10.73,  m3:29.50, sd3:31.34, sym:"AJB.L"},
+ {n:"Secure Trust Bank",           sh:"STB",  t:"Stock", sleeve:"single", w:4.03,  r1:91.38,  r3:33.51,  r5:7.69,   m3:42.09, sd3:50.41, sym:"STB.L"},
+ {n:"Centrica",                    sh:"CNA",  t:"Stock", sleeve:"single", w:2.64,  r1:21.77,  r3:20.95,  r5:31.04,  sym:"CNA.L"},
+ {n:"Deutsche Post",               sh:"DHL",  t:"Stock", sleeve:"single", w:2.63,  r1:39.17,  r3:11.96,  r5:3.00,   sym:"DHL.DE"},
+ {n:"RS Group",                    sh:"RS1",  t:"Stock", sleeve:"single", w:2.16,  r1:21.89,  r3:-2.58,  r5:-5.06,  sym:"RS1.L"},
+ {n:"London Stock Exchange Group", sh:"LSEG", t:"Stock", sleeve:"single", w:1.42,  r1:-18.71, r3:3.20,   r5:4.94,   sym:"LSEG.L"},
+ {n:"National Grid",               sh:"NG",   t:"Stock", sleeve:"single", w:1.18,  r1:18.92,  r3:12.25,  r5:12.95,  sym:"NG.L"},
+ {n:"First Quantum Minerals",      sh:"FM",   t:"Stock", sleeve:"single", w:0.82,  r1:108.45, r3:10.72,  r5:6.00,   sym:"FM.TO"},
+
+ {n:"Tritax Big Box",              sh:"BBOX", t:"REIT",  sleeve:"real",   w:7.96,  r1:8.29,   r3:7.99,   r5:-0.64,  ocf:0.73, m3:10.34, sd3:23.05, sym:"BBOX.L"},
+ {n:"HICL Infrastructure",         sh:"HICL", t:"Fund",  sleeve:"real",   w:4.05,  r1:23.51,  r3:4.52,   r5:0.95,   ocf:1.12, m3:5.80,  sd3:17.00, sym:"HICL.L"},
+
+ {n:"Plug Power",                  sh:"PLUG", t:"Stock", sleeve:"sat",    w:0.63,  r1:347.69, r3:-24.14, r5:-32.93, sym:"PLUG"},
+ {n:"FuelCell Energy",             sh:"FCEL", t:"Stock", sleeve:"sat",    w:0.59,  r1:324.06, r3:-32.09, r5:-40.03, sym:"FCEL"},
+ {n:"Rockhopper Exploration",      sh:"RKH",  t:"Stock", sleeve:"sat",    w:0.33,  r1:43.49,  r3:76.89,  r5:52.65,  sym:"RKH.L"},
+ {n:"Bloom Energy",                sh:"BE",   t:"Stock", sleeve:"sat",    w:0.19,  r1:1443.73,r3:167.31, r5:65.55,  sym:"BE"},
+
+ {n:"Gym Group",                   sh:"GYM",  t:"Stock", sleeve:"tail",   w:0.54,  r1:34.03,  r3:26.30,  r5:-6.90,  sym:"GYM.L"},
+ {n:"iShares Healthcare Innovation",sh:"HEAL",t:"ETF",   sleeve:"tail",   w:0.47,  r1:20.86,  r3:3.96,   r5:-1.34,  ocf:0.40, stars:2, sym:"HEAL.L"},
+ {n:"Merchants Trust",             sh:"MRCH", t:"Trust", sleeve:"tail",   w:0.29,  r1:17.29,  r3:10.77,  r5:9.36,   ocf:0.52, stars:2, sym:"MRCH.L"},
+ {n:"Grainger",                    sh:"GRI",  t:"Stock", sleeve:"tail",   w:0.08,  r1:-25.55, r3:-10.80, r5:-8.43,  sym:"GRI.L"},
+ {n:"China Nonferrous Gold",       sh:"CNG",  t:"Misc",  sleeve:"tail",   w:0.05,  r1:null,   r3:null,   r5:null,   sym:"CNG.L"},
+ {n:"HSBC MSCI Russia Capped",     sh:"RUS",  t:"Misc",  sleeve:"tail",   w:0.04,  r1:null,   r3:null,   r5:null,   sym:null, sus:true},
+ {n:"Tissue Regenix",              sh:"TRX",  t:"Misc",  sleeve:"tail",   w:0.03,  r1:null,   r3:null,   r5:null,   sym:"TRX.L"},
+];
+
+const SLEEVES = {
+  core:   {label:"Passive core & cash"},
+  single: {label:"Single-name book"},
+  real:   {label:"Real assets"},
+  sat:    {label:"Speculative satellite"},
+  tail:   {label:"Tail & legacy"},
+};
+
+const PORT = { r1:31.22, r3:21.17, r5:11.63, ytd:12.17,
+               ex:{r1:8.26, r3:6.79, r5:2.38, ytd:3.63},
+               sharpe3:1.39, alpha3:7.35, beta3:0.84, sd3:10.93, m3:19.93 };
+const BENCH = { r1:PORT.r1-PORT.ex.r1, r3:PORT.r3-PORT.ex.r3, r5:PORT.r5-PORT.ex.r5 };
+
+/* ════════════════════════ helpers ════════════════════════ */
+const YRS = {r1:1, r3:3, r5:5};
+const MINUS = "\u2212";
+const cum = (r,y)=> (Math.pow(1+r/100, y)-1)*100;
+const val = (h,w,u)=> h[w]==null ? null : (u==="cum" ? cum(h[w], YRS[w]) : h[w]);
+
+function fmt(v, dp){
+  if(v==null) return "—";
+  const d = dp!=null ? dp : (Math.abs(v)>=200 ? 0 : 1);
+  const s = Math.abs(v).toLocaleString("en-GB",{minimumFractionDigits:d,maximumFractionDigits:d});
+  return (v<0?MINUS:"+")+s;
+}
+const cls = v => v==null ? "na" : v<0 ? "neg" : "pos";
+const gbp = v => "£"+Math.round(v).toLocaleString("en-GB");
+
+/* ════════════════════════ portfolio band ════════════════════════ */
+(function(){
+  const cells = [["1 yr","r1"],["3 yr ann.","r3"],["5 yr ann.","r5"],["YTD","ytd"]];
+  document.getElementById("band").innerHTML = cells.map(([lab,k])=>`
+    <div class="cell">
+      <div class="lab micro">${lab}</div>
+      <div class="big num" style="color:var(--pos)">${fmt(PORT[k])}<span style="font-size:.55em;color:var(--faint)"> %</span></div>
+      <div class="vs">vs bmark <b>${fmt(PORT.ex[k])}</b></div>
+    </div>`).join("");
+  document.getElementById("bandfoot").innerHTML =
+    `3-yr risk · Sharpe <b>1.39</b> · α <b>+7.35</b> · β <b>0.84</b> · σ <b>10.93</b>`;
+})();
+
+/* ════════════════════════ ledger ════════════════════════ */
+const state = { w:"r3", u:"ann", o:"sleeve" };
+
+function barCap(w,u){
+  const a = HOLDINGS.map(h=>val(h,w,u)).filter(v=>v!=null).map(Math.abs).sort((x,y)=>y-x);
+  return Math.max((a[3] ?? a[a.length-1] ?? 10)*1.1, 10);   // clip past the 4th-largest move
+}
+
+function rowHTML(h, w, u, cap){
+  const v = val(h,w,u);
+  const meta = [h.t.toUpperCase(),
+                h.ocf!=null ? "OCF "+h.ocf.toFixed(2) : null,
+                h.stars ? `<span class="stars">${"★".repeat(h.stars)}</span>` : null,
+                state.o==="rank" ? SLEEVES[h.sleeve].label.toUpperCase() : null]
+               .filter(Boolean).join(" · ");
+  const micro = h.r1==null ? `<span style="color:var(--faint)">no published return series</span>` :
+    ["r1","r3","r5"].map(k=>{
+      const x=h[k]; return `${k[1]}Y <span class="${x<0?'n':'p'}">${fmt(x)}</span>`;
+    }).join(" · ") + `<span style="color:var(--faint)"> ann.</span>`;
+
+  let bar="";
+  if(v!=null){
+    const wid = Math.min(Math.abs(v),cap)/cap*50;
+    const clip = Math.abs(v)>cap;
+    bar = `<div class="bar ${v<0?'neg':'pos'} ${clip?'clip':''}" style="width:${wid.toFixed(2)}%"></div>` +
+          (clip ? `<span class="clipmark" style="${v<0?'left':'right'}:0">off-scale</span>` : "");
+  }
+  return `<div class="row">
+    <div class="row-top">
+      <div>
+        <div class="h-name">${h.n}${h.sus?' <span class="sus">(suspended)</span>':""}</div>
+        <div class="h-meta">${meta}</div>
+      </div>
+      <div class="h-val">
+        <div class="h-ret ${cls(v)}">${fmt(v)}${v!=null?'<span style="font-size:.6em;color:var(--faint)">%</span>':""}</div>
+        <div class="h-wt">${h.w.toFixed(2)}% wt</div>
+      </div>
+    </div>
+    <div class="barwrap">${bar}</div>
+    <div class="h-micro">${micro}</div>
+  </div>`;
+}
+
+function renderLedger(){
+  const {w,u,o} = state, cap = barCap(w,u), el = document.getElementById("ledger");
+  if(o==="rank"){
+    const list = [...HOLDINGS].sort((a,b)=>{
+      const va=val(a,w,u), vb=val(b,w,u);
+      if(va==null&&vb==null) return b.w-a.w;
+      if(va==null) return 1; if(vb==null) return -1;
+      return vb-va;
+    });
+    el.innerHTML = `<div class="sleeve">`+list.map(h=>rowHTML(h,w,u,cap)).join("")+`</div>`;
+  } else {
+    el.innerHTML = Object.keys(SLEEVES).map(s=>{
+      const hs = HOLDINGS.filter(h=>h.sleeve===s);
+      const wt = hs.reduce((a,h)=>a+h.w,0);
+      return `<div class="sleeve">
+        <div class="sleeve-head"><span class="name">${SLEEVES[s].label}</span>
+        <span class="micro">${wt.toFixed(1)}% of assets</span></div>
+        ${hs.map(h=>rowHTML(h,w,u,cap)).join("")}
+      </div>`;
+    }).join("");
+  }
+}
+
+function wireSeg(id, key, attr, after){
+  const seg = document.getElementById(id);
+  seg.addEventListener("click", e=>{
+    const b = e.target.closest("button"); if(!b) return;
+    state[key] = b.dataset[attr];
+    [...seg.querySelectorAll("button")].forEach(x=>x.setAttribute("aria-pressed", x===b));
+    if(after) after();
+    renderLedger();
+  });
+}
+wireSeg("segWin","w","w", ()=>{
+  document.getElementById("segUnit").classList.toggle("isoff", state.w==="r1");
+});
+wireSeg("segUnit","u","u");
+wireSeg("segOrder","o","o");
+renderLedger();
+
+/* ════════════════════════ scatter ════════════════════════ */
+(function(){
+  const pts = HOLDINGS.filter(h=>h.sd3!=null);
+  const W=720,H=430,L=52,R=18,T=16,B=44;
+  const X=s=> L+(s/55)*(W-L-R), Y=m=> T+(1-(m+8)/98)*(H-T-B);   // x 0..55σ, y −8..+90
+  let g="";
+  for(let s=0;s<=50;s+=10) g+=`<line class="grid" x1="${X(s)}" y1="${T}" x2="${X(s)}" y2="${H-B}"/>
+      <text class="axis-lab" x="${X(s)}" y="${H-B+16}" text-anchor="middle">${s}</text>`;
+  for(let m=0;m<=80;m+=20) g+=`<line class="grid" x1="${L}" y1="${Y(m)}" x2="${W-R}" y2="${Y(m)}"/>
+      <text class="axis-lab" x="${L-8}" y="${Y(m)+3}" text-anchor="end">${m===0?"0":"+"+m}</text>`;
+  const dx={AWD:[-8,-8],WRLD:[8,14],GILT:[8,-6],CHN:[8,-6],BBOX:[8,12],HICL:[8,12],RR:[10,4],AJB:[10,4],STB:[-10,-8]};
+  let p = pts.map(h=>{
+    const [ox,oy]=dx[h.sh]||[8,-6];
+    const anch = ox<0 ? "end":"start";
+    return `<circle class="pt" cx="${X(h.sd3)}" cy="${Y(h.m3)}" r="4"/>
+      <text class="pt-lab" x="${X(h.sd3)+ox}" y="${Y(h.m3)+oy}" text-anchor="${anch}">${h.sh}</text>`;
+  }).join("");
+  const px=X(PORT.sd3),py=Y(PORT.m3);
+  p += `<path class="port" d="M ${px} ${py-7} L ${px+7} ${py} L ${px} ${py+7} L ${px-7} ${py} Z"/>
+        <text class="pt-lab" x="${px}" y="${py+20}" text-anchor="middle" style="fill:var(--gold)">PORTFOLIO</text>`;
+  document.getElementById("scatter").innerHTML =
+   `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Three-year mean return against standard deviation for the top ten holdings" style="width:100%;height:auto">
+      ${g}${p}
+      <text class="axis-lab" x="${W-R}" y="${H-6}" text-anchor="end">3-YR STANDARD DEVIATION →</text>
+      <text class="axis-lab" x="${L}" y="${T-4}" text-anchor="start">↑ 3-YR MEAN %</text>
+    </svg>`;
+})();
+
+/* ════════════════════════ £1,000 strip ════════════════════════ */
+(function(){
+  const rows = HOLDINGS.filter(h=>h.r5!=null)
+    .map(h=>({n:h.n, v:1000*Math.pow(1+h.r5/100,5)}));
+  rows.push({n:"Whole portfolio", v:1000*Math.pow(1+PORT.r5/100,5), ref:true});
+  rows.push({n:"Benchmark",       v:1000*Math.pow(1+BENCH.r5/100,5), ref:true});
+  rows.sort((a,b)=>b.v-a.v);
+  const top = rows.slice(0,5), bot = rows.slice(-3),
+        mids = rows.filter(r=>r.ref && !top.includes(r) && !bot.includes(r));
+  const show=[...top, ...mids, ...bot];
+  const lo=50, hi=14000, w=v=> Math.max(2, (Math.log10(Math.max(v,lo))-Math.log10(lo))/(Math.log10(hi)-Math.log10(lo))*100);
+  document.getElementById("grand").innerHTML = show.map(r=>`
+    <div class="g-row">
+      <div class="g-name ${r.ref?'ref':''}">${r.n}</div>
+      <div class="g-track"><div class="g-bar ${r.ref?'ref':(r.v>=1000?'up':'dn')}" style="width:${w(r.v).toFixed(1)}%"></div></div>
+      <div class="g-val num" style="color:${r.ref?'var(--gold)':(r.v>=1000?'var(--pos)':'var(--neg)')}">${gbp(r.v)}</div>
+    </div>`).join("") +
+    `<p class="micro" style="padding-top:10px;color:var(--faint)">Top five, the two references, and the bottom three shown. £1,000 at each line's own 5-yr annualised rate — an instrument record, not your entry.</p>`;
+})();
+
+/* ════════════════════════ notes ════════════════════════ */
+(function(){
+  const notes = [
+   [`<b>Trailing windows, not holding-period returns.</b> The X-Ray publishes each instrument's own
+     1-, 3- and 5-year record to 31 May 2026, whatever the entry date. Adds, trims and realised
+     gains — the Bloom Energy trim included — are invisible here. Position-level P&L needs book
+     costs from AJ Bell.`],
+   [`<b>Five-year figures can predate the purchase.</b> Where a line was bought inside the window,
+     the number describes the instrument, not the position held.`],
+   [`<b>Four lines publish nothing.</b> Cash, China Nonferrous Gold, Tissue Regenix and the suspended
+     MSCI Russia ETF carry no return series in the report; they appear with an em-dash.`],
+   [`<b>The snapshot is 12 June 2026.</b> Trades settling after the report date — the recent money-market
+     and FTSE 100 deployment among them — are not yet reflected in weights or the cash line.`],
+   [`<b>Compounded basis.</b> "Compounded" converts the annualised figure to a full-window total:
+     (1 + r)<sup>n</sup> − 1. It is arithmetic on the printed number, not an independent data point.`],
+  ];
+  document.getElementById("notes").innerHTML = notes.map((n,i)=>
+    `<div class="note"><div class="no">${String(i+1).padStart(2,"0")}</div><p>${n[0]}</p></div>`).join("");
+})();
+
+/* ════════════════════════ screen nav ════════════════════════ */
+let pulseStarted = false;
+document.getElementById("nav").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  [...document.querySelectorAll("#nav button")].forEach(x=>x.setAttribute("aria-pressed", x===b));
+  document.getElementById("scr-ledger").classList.toggle("on", b.dataset.s==="ledger");
+  document.getElementById("scr-pulse").classList.toggle("on", b.dataset.s==="pulse");
+  if(b.dataset.s==="pulse" && !pulseStarted) refreshPulse();
+});
+
+/* ════════════════════════ daily pulse ════════════════════════
+   Source: Yahoo Finance chart API, fetched in-browser through a public
+   CORS relay. Swap or reorder relays here if one goes dark.            */
+const RELAYS = [
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+];
+const KDAYS = { d:1, w:5, m:21 };   // trading days back
+
+const venue = h => !h.sym ? "" :
+  h.sym.startsWith("0P") ? "NAV" :
+  h.sym.endsWith(".L")   ? "LSE" :
+  h.sym.endsWith(".DE")  ? "XETRA" :
+  h.sym.endsWith(".TO")  ? "TSX" : "US";
+
+async function getCloses(sym){
+  const y = "https://query1.finance.yahoo.com/v8/finance/chart/" +
+            encodeURIComponent(sym) + "?range=3mo&interval=1d";
+  let lastErr;
+  for(const relay of RELAYS){
+    try{
+      const ctl = new AbortController();
+      const t = setTimeout(()=>ctl.abort(), 12000);
+      const r = await fetch(relay(y), {signal:ctl.signal});
+      clearTimeout(t);
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const j = await r.json();
+      const closes = j.chart.result[0].indicators.quote[0].close.filter(v=>v!=null);
+      if(closes.length < 2) throw new Error("thin series");
+      return closes;
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr;
+}
+
+function pct(c, k){ return c.length > k ? (c[c.length-1]/c[c.length-1-k] - 1)*100 : null; }
+const fmtP = v => v==null ? "—" : (v<0?MINUS:"+") + Math.abs(v).toFixed(1);
+const pcls = v => v==null ? "na" : v<0 ? "neg" : "pos";
+
+function sparkSVG(closes, tone){
+  const c = closes.slice(-22);
+  const lo = Math.min(...c), hi = Math.max(...c), rng = (hi-lo) || 1;
+  const pts = c.map((v,i)=>
+    ((i/(c.length-1))*76).toFixed(1) + "," + (20 - ((v-lo)/rng)*18 + 1).toFixed(1)
+  ).join(" ");
+  return `<svg class="spark" viewBox="0 0 76 22" preserveAspectRatio="none" aria-hidden="true">
+    <polyline fill="none" stroke="${tone}" stroke-width="1.2" points="${pts}"/></svg>`;
+}
+
+function pulseRowHTML(h){
+  const px = h.px;
+  let mid = `<span class="p-sub" style="text-align:right">${h.sym ? "" : "no live line"}</span>`;
+  if(px && px.status==="pend") mid = `<span class="p-sub" style="text-align:right">fetching…</span>`;
+  if(px && px.status==="fail") mid = `<span class="p-sub" style="text-align:right">unavailable</span>`;
+  if(px && px.status==="ok")
+    mid = sparkSVG(px.closes, px.m==null ? "var(--dim)" : px.m<0 ? "var(--neg)" : "var(--pos)");
+  const cell = k => {
+    const v = px && px.status==="ok" ? px[k] : null;
+    return `<span class="p-v ${pcls(v)}">${fmtP(v)}</span>`;
+  };
+  return `<div class="p-row">
+    <div><div class="p-name">${h.n}${h.sus?' <span class="sus">(susp.)</span>':""}</div>
+         <div class="p-sub">${[h.sh, venue(h), h.w.toFixed(2)+"% wt"].filter(Boolean).join(" · ")}</div></div>
+    ${mid}${cell("d")}${cell("w")}${cell("m")}
+  </div>`;
+}
+
+const pstate = { o:"sleeve" };
+
+function renderPulse(){
+  const el = document.getElementById("pulse");
+  if(pstate.o==="sleeve"){
+    el.innerHTML = Object.keys(SLEEVES).map(s=>{
+      const hs = HOLDINGS.filter(h=>h.sleeve===s);
+      return `<div class="sleeve">
+        <div class="sleeve-head"><span class="name">${SLEEVES[s].label}</span>
+        <span class="micro">${hs.reduce((a,h)=>a+h.w,0).toFixed(1)}% of assets</span></div>
+        ${hs.map(pulseRowHTML).join("")}</div>`;
+    }).join("");
+  } else {
+    const k = pstate.o;
+    const list = [...HOLDINGS].sort((a,b)=>{
+      const va = a.px&&a.px.status==="ok" ? a.px[k] : null;
+      const vb = b.px&&b.px.status==="ok" ? b.px[k] : null;
+      if(va==null&&vb==null) return b.w-a.w;
+      if(va==null) return 1; if(vb==null) return -1;
+      return vb-va;
+    });
+    el.innerHTML = `<div class="sleeve" style="margin-top:6px">`+list.map(pulseRowHTML).join("")+`</div>`;
+  }
+  renderPulseBand();
+}
+
+function renderPulseBand(){
+  const ok = HOLDINGS.filter(h=>h.px && h.px.status==="ok");
+  const cashW = HOLDINGS.filter(h=>h.t==="Cash").reduce((a,h)=>a+h.w,0);
+  const cells = [["d","Yesterday"],["w","Last week"],["m","Last month"]].map(([k,lab])=>{
+    let num=0, den=cashW;                       // cash blended at nil
+    ok.forEach(h=>{ if(h.px[k]!=null){ num += h.w*h.px[k]; den += h.w; } });
+    const v = den>0 && ok.length ? num/den : null;
+    return `<div class="cell"><div class="lab micro">${lab} · blended</div>
+      <div class="big num" style="color:${v==null?'var(--faint)':v<0?'var(--neg)':'var(--pos)'}">${fmtP(v)}<span style="font-size:.55em;color:var(--faint)"> %</span></div>
+      <div class="vs">covering <b>${(den).toFixed(1)}%</b> of assets</div></div>`;
+  }).join("");
+  document.getElementById("pband").innerHTML = cells;
+}
+
+async function refreshPulse(){
+  pulseStarted = true;
+  const btn = document.getElementById("pRefresh"), stamp = document.getElementById("pStamp");
+  btn.disabled = true; stamp.textContent = "fetching 25 lines…";
+  const live = HOLDINGS.filter(h=>h.sym);
+  live.forEach(h=> h.px = {status:"pend"});
+  renderPulse();
+  let done = 0;
+  const work = live.map(h => async ()=>{
+    try{
+      const c = await getCloses(h.sym);
+      h.px = {status:"ok", closes:c, d:pct(c,KDAYS.d), w:pct(c,KDAYS.w), m:pct(c,KDAYS.m)};
+    }catch(e){ h.px = {status:"fail"}; }
+    stamp.textContent = "fetching… " + (++done) + "/" + live.length;
+    renderPulse();
+  });
+  const POOL = 6;                                // gentle on the relay
+  const queue = [...work];
+  await Promise.all(Array.from({length:POOL}, async ()=>{
+    while(queue.length){ await queue.shift()(); }
+  }));
+  btn.disabled = false;
+  const okN = live.filter(h=>h.px.status==="ok").length;
+  stamp.textContent = okN + "/" + live.length + " lines · " +
+    new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  document.getElementById("pfoot").innerHTML = okN === 0
+    ? `Every line came back blocked — this sandbox preview stops outbound fetches. <b>Open the downloaded file in a browser</b> and the pulse pulls Yahoo closes through the relay.`
+    : `Yahoo Finance daily closes via public relay · quotes delayed ~15 min · returns in listing currency.`;
+}
+
+document.getElementById("segPOrder").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  pstate.o = b.dataset.o;
+  [...document.querySelectorAll("#segPOrder button")].forEach(x=>x.setAttribute("aria-pressed", x===b));
+  renderPulse();
+});
+document.getElementById("pRefresh").addEventListener("click", refreshPulse);
+renderPulse();
+
+/* pulse provenance */
+(function(){
+  const notes = [
+   [`<b>Source and relay.</b> Prices are Yahoo Finance daily closes, fetched in the browser through a
+     public CORS relay (corsproxy.io, allorigins as fallback) — the RELAYS constant at the top of the
+     pulse script is a one-line swap if either goes dark. Quotes are delayed around fifteen minutes.`],
+   [`<b>Definitions.</b> "Yesterday" is the latest close against the prior close — during market hours
+     the live bar stands in, so it reads as today-so-far. Last week is five trading days; last month
+     is twenty-one.`],
+   [`<b>The two OEICs lag.</b> The All-World and gilt index funds price once a day at a forward NAV,
+     so their pulse runs roughly a session behind the market.`],
+   [`<b>Listing currency.</b> Moves are in each line's own currency — USD for the hydrogen names and
+     Bloom, EUR for Deutsche Post, CAD for First Quantum. Your GBP experience adds FX on top.`],
+   [`<b>The blended figure.</b> Each resolved line weighted by its X-Ray weight, cash held at nil;
+     unpriced and suspended lines sit outside the blend, so coverage is quoted beside each number.`],
+   [`<b>If every line reads unavailable,</b> the environment is blocking outbound fetches — the
+     claude.ai preview does. Open the file in an ordinary browser tab.`],
+  ];
+  document.getElementById("pnotes").innerHTML = notes.map((n,i)=>
+    `<div class="note"><div class="no">${String(i+1).padStart(2,"0")}</div><p>${n[0]}</p></div>`).join("");
+})();
+</script>
+</body>
+</html>

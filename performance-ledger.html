@@ -260,19 +260,17 @@
         <span class="micro">Yahoo daily closes · listing currency</span>
       </div>
       <div class="controls">
-        <span class="micro ctl-lab">Order</span>
-        <div class="seg" id="segPOrder" role="group" aria-label="Pulse ordering">
-          <button data-o="sleeve" aria-pressed="true">Sleeves</button>
-          <button data-o="d" aria-pressed="false">1 d</button>
-          <button data-o="w" aria-pressed="false">1 w</button>
-          <button data-o="m" aria-pressed="false">1 m</button>
+        <span class="micro ctl-lab">Span</span>
+        <div class="seg" id="segSpan" role="group" aria-label="Lookback span">
+          <button data-sp="short" aria-pressed="true">1 d – 1 m</button>
+          <button data-sp="long" aria-pressed="false">3 m – 5 y</button>
         </div>
+        <span class="micro ctl-lab">Order</span>
+        <div class="seg" id="segPOrder" role="group" aria-label="Pulse ordering"></div>
         <button class="ghost" id="pRefresh">Refresh</button>
         <span class="micro" id="pStamp"></span>
       </div>
-      <div class="phead micro">
-        <span>Holding</span><span>1 m chart</span><span>1 d</span><span>1 w</span><span>1 m</span>
-      </div>
+      <div class="phead micro" id="phead"></div>
       <div id="pulse"></div>
     </section>
 
@@ -543,7 +541,11 @@ const RELAYS = [
   u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
   u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
 ];
-const KDAYS = { d:1, w:5, m:21 };   // trading days back
+/* Windows: 1d/1w are trading-bar based; 1m/3m/1y/5y are calendar-anchored (days back). */
+const SPANS = {
+  short:{ keys:["d","w","m"],   labs:["1 d","1 w","1 m"],  spark:22,  sparkLab:"1 m chart", tone:"m" },
+  long: { keys:["q","y","y5"],  labs:["3 m","1 y","5 y"],  spark:252, sparkLab:"1 y chart", tone:"y" },
+};
 
 const venue = h => !h.sym ? "" :
   h.sym.startsWith("0P") ? "NAV" :
@@ -551,32 +553,45 @@ const venue = h => !h.sym ? "" :
   h.sym.endsWith(".DE")  ? "XETRA" :
   h.sym.endsWith(".TO")  ? "TSX" : "US";
 
-async function getCloses(sym){
-  const y = "https://query1.finance.yahoo.com/v8/finance/chart/" +
-            encodeURIComponent(sym) + "?range=3mo&interval=1d";
+async function getSeries(sym){
+  const p2 = Math.floor(Date.now()/1000);
+  const p1 = p2 - Math.floor(6*365.25*86400);           // six years back, so the 5-yr anchor sits inside
+  const y = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym) +
+            "?period1=" + p1 + "&period2=" + p2 + "&interval=1d&includePrePost=false";
   let lastErr;
   for(const relay of RELAYS){
     try{
       const ctl = new AbortController();
-      const t = setTimeout(()=>ctl.abort(), 12000);
+      const t = setTimeout(()=>ctl.abort(), 15000);
       const r = await fetch(relay(y), {signal:ctl.signal});
       clearTimeout(t);
       if(!r.ok) throw new Error("HTTP "+r.status);
       const j = await r.json();
-      const closes = j.chart.result[0].indicators.quote[0].close.filter(v=>v!=null);
-      if(closes.length < 2) throw new Error("thin series");
-      return closes;
+      const res = j.chart.result[0];
+      const raw = (res.indicators.adjclose && res.indicators.adjclose[0].adjclose)
+                  || res.indicators.quote[0].close;                 // dividend-adjusted where offered
+      const ts = res.timestamp, T=[], C=[];
+      for(let i=0;i<raw.length;i++) if(raw[i]!=null && ts[i]!=null){ T.push(ts[i]); C.push(raw[i]); }
+      if(C.length < 2) throw new Error("thin series");
+      return {t:T, c:C};
     }catch(e){ lastErr = e; }
   }
   throw lastErr;
 }
 
-function pct(c, k){ return c.length > k ? (c[c.length-1]/c[c.length-1-k] - 1)*100 : null; }
-const fmtP = v => v==null ? "—" : (v<0?MINUS:"+") + Math.abs(v).toFixed(1);
+function pctBars(s, k){ const n=s.c.length; return n>k ? (s.c[n-1]/s.c[n-1-k] - 1)*100 : null; }
+function pctDays(s, days){
+  const n = s.c.length; if(n<2) return null;
+  const target = s.t[n-1] - days*86400;
+  for(let j=n-1; j>=0; j--) if(s.t[j] <= target) return (s.c[n-1]/s.c[j] - 1)*100;
+  return null;                                          // series doesn't reach back that far
+}
+const fmtP = v => { if(v==null) return "—";
+  const a = Math.abs(v); return (v<0?MINUS:"+") + (a>=100 ? a.toFixed(0) : a.toFixed(1)); };
 const pcls = v => v==null ? "na" : v<0 ? "neg" : "pos";
 
-function sparkSVG(closes, tone){
-  const c = closes.slice(-22);
+function sparkSVG(closes, count, tone){
+  const c = closes.slice(-count);
   const lo = Math.min(...c), hi = Math.max(...c), rng = (hi-lo) || 1;
   const pts = c.map((v,i)=>
     ((i/(c.length-1))*76).toFixed(1) + "," + (20 - ((v-lo)/rng)*18 + 1).toFixed(1)
@@ -586,12 +601,14 @@ function sparkSVG(closes, tone){
 }
 
 function pulseRowHTML(h){
-  const px = h.px;
+  const px = h.px, span = SPANS[pstate.span];
   let mid = `<span class="p-sub" style="text-align:right">${h.sym ? "" : "no live line"}</span>`;
   if(px && px.status==="pend") mid = `<span class="p-sub" style="text-align:right">fetching…</span>`;
   if(px && px.status==="fail") mid = `<span class="p-sub" style="text-align:right">unavailable</span>`;
-  if(px && px.status==="ok")
-    mid = sparkSVG(px.closes, px.m==null ? "var(--dim)" : px.m<0 ? "var(--neg)" : "var(--pos)");
+  if(px && px.status==="ok"){
+    const tv = px[span.tone];
+    mid = sparkSVG(px.closes, span.spark, tv==null ? "var(--dim)" : tv<0 ? "var(--neg)" : "var(--pos)");
+  }
   const cell = k => {
     const v = px && px.status==="ok" ? px[k] : null;
     return `<span class="p-v ${pcls(v)}">${fmtP(v)}</span>`;
@@ -599,13 +616,17 @@ function pulseRowHTML(h){
   return `<div class="p-row">
     <div><div class="p-name">${h.n}${h.sus?' <span class="sus">(susp.)</span>':""}</div>
          <div class="p-sub">${[h.sh, venue(h), h.w.toFixed(2)+"% wt"].filter(Boolean).join(" · ")}</div></div>
-    ${mid}${cell("d")}${cell("w")}${cell("m")}
+    ${mid}${SPANS[pstate.span].keys.map(cell).join("")}
   </div>`;
 }
 
-const pstate = { o:"sleeve" };
+const pstate = { o:"sleeve", span:"short" };
 
 function renderPulse(){
+  const span = SPANS[pstate.span];
+  document.getElementById("phead").innerHTML =
+    `<span>Holding</span><span>${span.sparkLab}</span>` +
+    span.labs.map(l=>`<span>${l}</span>`).join("");
   const el = document.getElementById("pulse");
   if(pstate.o==="sleeve"){
     el.innerHTML = Object.keys(SLEEVES).map(s=>{
@@ -653,8 +674,10 @@ async function refreshPulse(){
   let done = 0;
   const work = live.map(h => async ()=>{
     try{
-      const c = await getCloses(h.sym);
-      h.px = {status:"ok", closes:c, d:pct(c,KDAYS.d), w:pct(c,KDAYS.w), m:pct(c,KDAYS.m)};
+      const s = await getSeries(h.sym);
+      h.px = {status:"ok", closes:s.c,
+              d:pctBars(s,1), w:pctBars(s,5),
+              m:pctDays(s,30), q:pctDays(s,91), y:pctDays(s,365), y5:pctDays(s,1826)};
     }catch(e){ h.px = {status:"fail"}; }
     stamp.textContent = "fetching… " + (++done) + "/" + live.length;
     renderPulse();
@@ -669,9 +692,26 @@ async function refreshPulse(){
   stamp.textContent = okN + "/" + live.length + " lines · " +
     new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
   document.getElementById("pfoot").innerHTML = okN === 0
-    ? `Every line came back blocked — this sandbox preview stops outbound fetches. <b>Open the downloaded file in a browser</b> and the pulse pulls Yahoo closes through the relay.`
+    ? `Every line came back blocked — this sandbox preview stops outbound fetches. <b>Open the page from its github.io address</b> and the pulse pulls Yahoo closes through the relay.`
     : `Yahoo Finance daily closes via public relay · quotes delayed ~15 min · returns in listing currency.`;
 }
+
+function renderSortSeg(){
+  const span = SPANS[pstate.span];
+  document.getElementById("segPOrder").innerHTML =
+    `<button data-o="sleeve" aria-pressed="${pstate.o==="sleeve"}">Sleeves</button>` +
+    span.keys.map((k,i)=>
+      `<button data-o="${k}" aria-pressed="${pstate.o===k}">${span.labs[i]}</button>`).join("");
+}
+
+document.getElementById("segSpan").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  pstate.span = b.dataset.sp;
+  [...document.querySelectorAll("#segSpan button")].forEach(x=>x.setAttribute("aria-pressed", x===b));
+  if(!SPANS[pstate.span].keys.includes(pstate.o)) pstate.o = "sleeve";
+  renderSortSeg();
+  renderPulse();
+});
 
 document.getElementById("segPOrder").addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
@@ -680,25 +720,33 @@ document.getElementById("segPOrder").addEventListener("click", e=>{
   renderPulse();
 });
 document.getElementById("pRefresh").addEventListener("click", refreshPulse);
+renderSortSeg();
 renderPulse();
 
 /* pulse provenance */
 (function(){
   const notes = [
-   [`<b>Source and relay.</b> Prices are Yahoo Finance daily closes, fetched in the browser through a
-     public CORS relay (corsproxy.io, allorigins as fallback) — the RELAYS constant at the top of the
-     pulse script is a one-line swap if either goes dark. Quotes are delayed around fifteen minutes.`],
-   [`<b>Definitions.</b> "Yesterday" is the latest close against the prior close — during market hours
-     the live bar stands in, so it reads as today-so-far. Last week is five trading days; last month
-     is twenty-one.`],
+   [`<b>Source and relay.</b> Prices are Yahoo Finance dividend-adjusted daily closes over six years,
+     fetched in the browser through a public CORS relay (corsproxy.io, allorigins as fallback) — the
+     RELAYS constant at the top of the pulse script is a one-line swap if either goes dark. Quotes
+     are delayed around fifteen minutes.`],
+   [`<b>Definitions.</b> "Yesterday" is the latest close against the prior close — during market
+     hours the live bar stands in, so it reads as today-so-far. Last week is five trading days;
+     the month, quarter, year and five-year windows anchor to 30, 91, 365 and 1,826 calendar days.
+     A dash on the long span means the line's history doesn't reach back that far.`],
+   [`<b>Long windows vs the Ledger.</b> Because closes are dividend-adjusted, the 1-yr and 5-yr
+     columns read as approximate total returns — near the Ledger's Morningstar figures but not
+     identical: different method, and the X-Ray froze at 31 May while this is live.`],
    [`<b>The two OEICs lag.</b> The All-World and gilt index funds price once a day at a forward NAV,
      so their pulse runs roughly a session behind the market.`],
    [`<b>Listing currency.</b> Moves are in each line's own currency — USD for the hydrogen names and
      Bloom, EUR for Deutsche Post, CAD for First Quantum. Your GBP experience adds FX on top.`],
-   [`<b>The blended figure.</b> Each resolved line weighted by its X-Ray weight, cash held at nil;
-     unpriced and suspended lines sit outside the blend, so coverage is quoted beside each number.`],
+   [`<b>The blended figure stays short-fused.</b> Each resolved line weighted by its X-Ray weight,
+     cash at nil, coverage quoted beside each number. Long windows are deliberately not blended:
+     today's weights don't describe yesterday's book — the portfolio's true long-run record lives
+     on the Ledger.`],
    [`<b>If every line reads unavailable,</b> the environment is blocking outbound fetches — the
-     claude.ai preview does. Open the file in an ordinary browser tab.`],
+     claude.ai preview does. Open the page from its github.io address or a browser tab.`],
   ];
   document.getElementById("pnotes").innerHTML = notes.map((n,i)=>
     `<div class="note"><div class="no">${String(i+1).padStart(2,"0")}</div><p>${n[0]}</p></div>`).join("");

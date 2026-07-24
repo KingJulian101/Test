@@ -82,12 +82,6 @@
   .row-top{display:flex;justify-content:space-between;align-items:baseline;gap:14px}
   .h-name{font-size:17px;font-weight:400;letter-spacing:.002em}
   .sus{font-style:italic;color:var(--faint);font-size:14px}
-  .band.p3{grid-template-columns:repeat(3,1fr)}
-  @media(max-width:640px){
-    .band.p3{grid-template-columns:repeat(3,1fr)}
-    .band.p3 .cell{border-bottom:none;padding:14px 10px 12px}
-    .band.p3 .cell:nth-child(3){border-left:1px solid var(--hair);padding-left:10px}
-  }
   .h-meta{margin-top:3px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
   .h-meta .stars{color:var(--gold);letter-spacing:.02em}
   .h-val{text-align:right;flex-shrink:0}
@@ -251,7 +245,7 @@
   <!-- ═══════════ DAILY PULSE ═══════════ -->
   <div class="screen" id="scr-pulse">
 
-    <div class="band p3" id="pband"></div>
+    <div class="band" id="pband"></div>
     <p class="bandfoot micro" id="pfoot">Live figures — press refresh to fetch the latest closes.</p>
 
     <section class="sec">
@@ -344,6 +338,10 @@ const PORT = { r1:31.22, r3:21.17, r5:11.63, ytd:12.17,
                ex:{r1:8.26, r3:6.79, r5:2.38, ytd:3.63},
                sharpe3:1.39, alpha3:7.35, beta3:0.84, sd3:10.93, m3:19.93 };
 const BENCH = { r1:PORT.r1-PORT.ex.r1, r3:PORT.r3-PORT.ex.r3, r5:PORT.r5-PORT.ex.r5 };
+
+/* Whole-book value in GBP — the Pulse £ tile multiplies this by the blended day move.
+   Update as the book drifts: edit here, or tell Claude and it's a one-line push.     */
+const PORTFOLIO_GBP = null;   // e.g. 185000
 
 /* ════════════════════════ helpers ════════════════════════ */
 const YRS = {r1:1, r3:3, r5:5};
@@ -653,15 +651,25 @@ function renderPulse(){
 function renderPulseBand(){
   const ok = HOLDINGS.filter(h=>h.px && h.px.status==="ok");
   const cashW = HOLDINGS.filter(h=>h.t==="Cash").reduce((a,h)=>a+h.w,0);
-  const cells = [["d","Yesterday"],["w","Last week"],["m","Last month"]].map(([k,lab])=>{
-    let num=0, den=cashW;                       // cash blended at nil
+  const blend = k => { let num=0, den=cashW;            // cash blended at nil
     ok.forEach(h=>{ if(h.px[k]!=null){ num += h.w*h.px[k]; den += h.w; } });
-    const v = den>0 && ok.length ? num/den : null;
-    return `<div class="cell"><div class="lab micro">${lab} · blended</div>
-      <div class="big num" style="color:${v==null?'var(--faint)':v<0?'var(--neg)':'var(--pos)'}">${fmtP(v)}<span style="font-size:.55em;color:var(--faint)"> %</span></div>
-      <div class="vs">covering <b>${(den).toFixed(1)}%</b> of assets</div></div>`;
-  }).join("");
-  document.getElementById("pband").innerHTML = cells;
+    return { v: den>0 && ok.length ? num/den : null, den, num };
+  };
+  const d = blend("d");
+  const pnl = (PORTFOLIO_GBP!=null && ok.length) ? PORTFOLIO_GBP * d.num/10000 : null;
+  const fmtGBP = v => (v<0?MINUS:"+") + "£" + Math.abs(Math.round(v)).toLocaleString("en-GB");
+  const pcell = pnl==null
+    ? `<div class="cell"><div class="lab micro">Yesterday · £</div>
+       <div class="big num" style="color:var(--faint)">—</div>
+       <div class="vs">awaiting book value</div></div>`
+    : `<div class="cell"><div class="lab micro">Yesterday · £</div>
+       <div class="big num" style="color:${pnl<0?'var(--neg)':'var(--pos)'}">${fmtGBP(pnl)}</div>
+       <div class="vs">on a <b>£${Math.round(PORTFOLIO_GBP).toLocaleString("en-GB")}</b> book</div></div>`;
+  const cells = [[d,"Yesterday · %"],[blend("w"),"Last week"],[blend("m"),"Last month"]].map(([b,lab])=>
+    `<div class="cell"><div class="lab micro">${lab} · blended</div>
+      <div class="big num" style="color:${b.v==null?'var(--faint)':b.v<0?'var(--neg)':'var(--pos)'}">${fmtP(b.v)}<span style="font-size:.55em;color:var(--faint)"> %</span></div>
+      <div class="vs">covering <b>${b.den.toFixed(1)}%</b> of assets</div></div>`).join("");
+  document.getElementById("pband").innerHTML = pcell + cells;
 }
 
 async function refreshPulse(){
@@ -741,6 +749,10 @@ renderPulse();
      so their pulse runs roughly a session behind the market.`],
    [`<b>Listing currency.</b> Moves are in each line's own currency — USD for the hydrogen names and
      Bloom, EUR for Deutsche Post, CAD for First Quantum. Your GBP experience adds FX on top.`],
+   [`<b>The £ tile is an estimate.</b> Yesterday's blended move applied to the book value set in
+     the file (weights from the 12 Jun X-Ray; unpriced lines held flat; the ~5% of the book in
+     dollars, euros and Canadian dollars is untranslated, so overnight FX sits outside the figure).
+     During market hours it reads as today-so-far.`],
    [`<b>The blended figure stays short-fused.</b> Each resolved line weighted by its X-Ray weight,
      cash at nil, coverage quoted beside each number. Long windows are deliberately not blended:
      today's weights don't describe yesterday's book — the portfolio's true long-run record lives

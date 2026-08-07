@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ day_label }}{% endblock %}
+{% block content %}
+<div class="day-header">
+  <div class="day-nav">
+    <a class="btn" href="{{ url_for('bookings.day', day=prev_day) }}">&lsaquo; Prev</a>
+    <a class="btn" href="{{ url_for('bookings.day', day=today) }}">Today</a>
+    <a class="btn" href="{{ url_for('bookings.day', day=next_day) }}">Next &rsaquo;</a>
+    <form method="get" action="{{ url_for('bookings.day') }}" class="inline">
+      <input type="date" name="day" value="{{ day }}" onchange="this.form.submit()">
+    </form>
+  </div>
+  <h1>{{ day_label }}</h1>
+  <a class="btn btn-primary" href="{{ url_for('bookings.book', date=day) }}">+ Book a room</a>
+</div>
+<p class="hint">Click an empty slot to book it, or click a booking to see details.</p>
+<div class="grid-wrap">
+  <div class="grid" style="--cols: {{ columns|length }}; --slots: {{ n_slots }};">
+    <div class="col gutter">
+      <div class="col-head"></div>
+      <div class="col-body">
+        {% for t in starts %}<div class="slot-label">{% if t.endswith(':00') %}{{ t }}{% endif %}</div>{% endfor %}
+      </div>
+    </div>
+    {% for column in columns %}
+    <div class="col">
+      <div class="col-head" {% if column.room['description'] %}title="{{ column.room['description'] }}"{% endif %}>
+        {{ column.room['name'] }}{% if column.room['capacity'] %} <span class="cap">({{ column.room['capacity'] }})</span>{% endif %}
+      </div>
+      <div class="col-body">
+        {% for t in starts %}
+        <a class="slot{% if t.endswith(':00') %} hour{% endif %}"
+           href="{{ url_for('bookings.book', room_id=column.room['id'], date=day, start=t) }}"
+           aria-label="Book {{ column.room['name'] }} at {{ t }}"></a>
+        {% endfor %}
+        {% for b in column.blocks %}
+        <a class="block{% if b.mine %} mine{% endif %}" style="top: {{ b.top }}%; height: {{ b.height }}%;"
+           href="{{ url_for('bookings.detail', booking_id=b.row['id']) }}"
+           title="{{ b.row['start_time'] }}–{{ b.row['end_time'] }} {{ b.row['title'] }} ({{ b.row['full_name'] }})">
+          <span class="block-time">{{ b.row['start_time'] }}–{{ b.row['end_time'] }}</span>
+          <span class="block-title">{{ b.row['title'] }}</span>
+          <span class="block-who">{{ b.row['full_name'] }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Book a room{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Book a room</h1>
+  {% if errors %}
+  <div class="flash flash-error">
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  <form method="post" action="{{ url_for('bookings.book') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Room
+      <select name="room_id" required>
+        <option value="" disabled {% if not form.room_id %}selected{% endif %}>Choose a room…</option>
+        {% for room in rooms %}
+        <option value="{{ room['id'] }}" {% if form.room_id|string == room['id']|string %}selected{% endif %}>
+          {{ room['name'] }}{% if room['capacity'] %} (capacity {{ room['capacity'] }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Date
+      <input type="date" name="date" value="{{ form.date }}" {% if not g.user['is_admin'] %}min="{{ min_date }}"{% endif %} required>
+    </label>
+    <div class="field-row">
+      <label>Start
+        <select name="start" required>
+          {% for t in valid_times[:-1] %}
+          <option value="{{ t }}" {% if form.start == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>End
+        <select name="end" required>
+          {% for t in valid_times[1:] %}
+          <option value="{{ t }}" {% if form.end == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <label>Title
+      <input type="text" name="title" value="{{ form.title }}" maxlength="120" placeholder="e.g. Diabetes clinic" required>
+    </label>
+    <label>Notes (optional)
+      <textarea name="notes" rows="2">{{ form.notes }}</textarea>
+    </label>
+    <div class="field-row">
+      <label>Repeats
+        <select name="repeat">
+          {% for key, (interval, label) in repeat_choices.items() %}
+          <option value="{{ key }}" {% if form.repeat == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Repeat until
+        <input type="date" name="until" value="{{ form.until }}">
+      </label>
+    </div>
+    <label class="checkbox">
+      <input type="checkbox" name="skip_conflicts" value="1" {% if form.skip_conflicts %}checked{% endif %}>
+      Skip clashing dates (for repeating bookings)
+    </label>
+    <button class="btn btn-primary">Book</button>
+    <a class="btn" href="{{ url_for('bookings.day', day=form.date or none) }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

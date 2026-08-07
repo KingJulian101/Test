@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Manage rooms{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Rooms</h1>
+  <table class="table">
+    <thead>
+      <tr><th>Name</th><th>Description</th><th>Capacity</th><th>Order</th><th>Active</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for room in rooms %}
+      <tr>
+        <form method="post" action="{{ url_for('admin.update_room', room_id=room['id']) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <td><input type="text" name="name" value="{{ room['name'] }}" required></td>
+        <td><input type="text" name="description" value="{{ room['description'] }}"></td>
+        <td><input type="number" name="capacity" value="{{ room['capacity'] or '' }}" min="1" class="short"></td>
+        <td><input type="number" name="sort_order" value="{{ room['sort_order'] }}" class="short"></td>
+        <td><input type="checkbox" name="is_active" value="1" {% if room['is_active'] %}checked{% endif %}></td>
+        <td><button class="btn btn-small">Save</button></td>
+        </form>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <h2>Add a room</h2>
+  <form method="post" action="{{ url_for('admin.add_room') }}" class="inline-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="text" name="name" placeholder="Room name" required>
+    <button class="btn btn-primary">Add room</button>
+  </form>
+  <p class="hint">Deactivating a room hides it from the grid and booking form; existing bookings are kept.</p>
+</div>
+{% endblock %}

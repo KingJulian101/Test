@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Edit booking{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Edit booking</h1>
+  {% if booking['series_id'] %}
+  <p class="hint">This is one occurrence of a repeating booking. Changes here apply to this occurrence only.</p>
+  {% endif %}
+  {% if errors %}
+  <div class="flash flash-error">
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  <form method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Room
+      <select name="room_id" required>
+        {% for room in rooms %}
+        <option value="{{ room['id'] }}" {% if form.room_id|string == room['id']|string %}selected{% endif %}>
+          {{ room['name'] }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Date
+      <input type="date" name="date" value="{{ form.date }}" {% if not g.user['is_admin'] %}min="{{ min_date }}"{% endif %} required>
+    </label>
+    <div class="field-row">
+      <label>Start
+        <select name="start" required>
+          {% for t in valid_times[:-1] %}
+          <option value="{{ t }}" {% if form.start == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>End
+        <select name="end" required>
+          {% for t in valid_times[1:] %}
+          <option value="{{ t }}" {% if form.end == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <label>Title
+      <input type="text" name="title" value="{{ form.title }}" maxlength="120" required>
+    </label>
+    <label>Notes (optional)
+      <textarea name="notes" rows="2">{{ form.notes }}</textarea>
+    </label>
+    <button class="btn btn-primary">Save changes</button>
+    <a class="btn" href="{{ url_for('bookings.detail', booking_id=booking['id']) }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

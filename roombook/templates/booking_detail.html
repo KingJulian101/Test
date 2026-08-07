@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Booking details{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>{{ booking['title'] }}</h1>
+  <dl class="details">
+    <dt>Room</dt><dd>{{ booking['room_name'] }}</dd>
+    <dt>Date</dt><dd>{{ pretty_date(booking['date']) }}</dd>
+    <dt>Time</dt><dd>{{ booking['start_time'] }}–{{ booking['end_time'] }}</dd>
+    <dt>Booked by</dt><dd>{{ booking['full_name'] }}</dd>
+    {% if booking['notes'] %}<dt>Notes</dt><dd>{{ booking['notes'] }}</dd>{% endif %}
+    {% if booking['series_id'] %}
+    <dt>Series</dt><dd>Repeating booking — {{ series_future }} upcoming of {{ series_total }} total.</dd>
+    {% endif %}
+  </dl>
+  {% if can_manage %}
+  <div class="actions">
+    <a class="btn" href="{{ url_for('bookings.edit', booking_id=booking['id']) }}">Edit this occurrence</a>
+    <form method="post" action="{{ url_for('bookings.cancel', booking_id=booking['id']) }}" class="inline"
+          onsubmit="return confirm('Cancel this booking?');">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-danger">Cancel this occurrence</button>
+    </form>
+    {% if booking['series_id'] %}
+    <form method="post" action="{{ url_for('bookings.cancel_future', booking_id=booking['id']) }}" class="inline"
+          onsubmit="return confirm('Cancel this and all future occurrences?');">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-danger">Cancel this &amp; future</button>
+    </form>
+    <form method="post" action="{{ url_for('bookings.cancel_series', booking_id=booking['id']) }}" class="inline"
+          onsubmit="return confirm('Cancel the entire series, including past occurrences?');">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-danger">Cancel entire series</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+  <p><a href="{{ url_for('bookings.day', day=booking['date']) }}">&lsaquo; Back to {{ pretty_date(booking['date']) }}</a></p>
+</div>
+{% endblock %}

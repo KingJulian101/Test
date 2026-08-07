@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Manage users{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Users</h1>
+  <table class="table">
+    <thead>
+      <tr><th>Username</th><th>Full name</th><th>Email</th><th>Admin</th><th>Active</th><th></th><th>Reset password</th></tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <form method="post" action="{{ url_for('admin.update_user', user_id=user['id']) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <td>{{ user['username'] }}</td>
+        <td><input type="text" name="full_name" value="{{ user['full_name'] }}" required></td>
+        <td><input type="email" name="email" value="{{ user['email'] }}"></td>
+        <td><input type="checkbox" name="is_admin" value="1" {% if user['is_admin'] %}checked{% endif %}></td>
+        <td><input type="checkbox" name="is_active" value="1" {% if user['is_active'] %}checked{% endif %}></td>
+        <td><button class="btn btn-small">Save</button></td>
+        </form>
+        <td>
+          <form method="post" action="{{ url_for('admin.reset_password', user_id=user['id']) }}" class="inline-form">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <input type="password" name="password" placeholder="New password" minlength="8" required>
+            <button class="btn btn-small">Reset</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <h2>Add a user</h2>
+  <form method="post" action="{{ url_for('admin.add_user') }}" class="stacked-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="field-row">
+      <label>Username <input type="text" name="username" required></label>
+      <label>Full name <input type="text" name="full_name" required></label>
+    </div>
+    <div class="field-row">
+      <label>Email (optional) <input type="email" name="email"></label>
+      <label>Password <input type="password" name="password" minlength="8" required></label>
+    </div>
+    <label class="checkbox"><input type="checkbox" name="is_admin" value="1"> Administrator</label>
+    <button class="btn btn-primary">Add user</button>
+  </form>
+  <p class="hint">Deactivating a user prevents them logging in; their bookings are kept.</p>
+</div>
+{% endblock %}
